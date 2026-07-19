@@ -1,0 +1,105 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: -0.01em;
+}
+
+::selection {
+  background: rgba(245, 185, 66, 0.35);
+  color: #fff;
+}
+
+/* Visible keyboard focus everywhere — accessibility floor, not decoration */
+:focus-visible {
+  outline: 2px solid #F5B942;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2E3346; border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: #3a405a; }
+
+.card {
+  @apply bg-surface border border-border rounded-2xl shadow-panel;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary {
+  @apply btn bg-signal text-ink hover:bg-signal-soft;
+}
+.btn-secondary {
+  @apply btn bg-surface-raised text-ink2-primary border border-border hover:bg-surface-hover;
+}
+.btn-ghost {
+  @apply btn text-ink2-muted hover:text-ink2-primary hover:bg-surface-raised;
+}
+.btn-danger {
+  @apply btn bg-alert/10 text-alert border border-alert/30 hover:bg-alert/20;
+}
+
+.input {
+  @apply w-full bg-surface-raised border border-border rounded-xl px-3.5 py-2.5 text-sm text-ink2-primary placeholder:text-ink2-faint outline-none focus:border-signal/60 transition-colors;
+}
+
+.label {
+  @apply block text-xs font-medium text-ink2-muted mb-1.5 uppercase tracking-wide;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+}
+
+/* FullCalendar dark-theme adaptation via its documented CSS custom properties */
+.syncmind-calendar {
+  --fc-border-color: #2E3346;
+  --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: #1B1E2A;
+  --fc-list-event-hover-bg-color: #232739;
+  --fc-today-bg-color: rgba(245, 185, 66, 0.08);
+  --fc-button-bg-color: #232739;
+  --fc-button-border-color: #2E3346;
+  --fc-button-hover-bg-color: #282D42;
+  --fc-button-active-bg-color: #F5B942;
+  color: #EDEFF7;
+}
+.syncmind-calendar .fc-button {
+  text-transform: capitalize;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+.syncmind-calendar .fc-toolbar-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 1.05rem;
+}
+.syncmind-calendar .fc-daygrid-day-number,
+.syncmind-calendar a {
+  color: #EDEFF7;
+}
+.syncmind-calendar .fc-day-other .fc-daygrid-day-number {
+  color: #5B6079;
+}

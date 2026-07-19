@@ -1,0 +1,189 @@
+// project-service — owns everything except Users. ownerId / userId fields
+// below are NOT Prisma relations to a User model (this service doesn't have
+// one) — they're plain opaque IDs issued by auth-service, matched against
+// req.user.id from the verified JWT. Anything project-service needs to
+// display about a person (name/email) is denormalized directly onto
+// ProjectMember at the point they're added, or read from the JWT itself.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// TaskStatus: TODO | IN_PROGRESS | COMPLETED
+// TaskPriority: LOW | MEDIUM | HIGH | URGENT
+// ProjectHealth: ON_TRACK | NEEDS_ATTENTION | AT_RISK
+// InsightSeverity: INFO | WARNING | CRITICAL
+// InsightType: HEALTH | DEADLINE_RISK | MISSING_OWNER | BLOCKED_TASK | DEPENDENCY_RISK | MISSING_ACTIVITY | WORKLOAD_IMBALANCE
+// NotificationType: DEADLINE | AI_RISK | PROJECT_EVENT
+// ProjectRole: OWNER | ADMIN | MEMBER
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  health      String   @default("ON_TRACK") // ProjectHealth
+  ownerId     String   // opaque User.id from auth-service — not a Prisma relation
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members       ProjectMember[]
+  conversations Conversation[]
+  tasks         Task[]
+  decisions     Decision[]
+  milestones    Milestone[]
+  insights      AIInsight[]
+  activityLogs  ActivityLog[]
+
+  @@index([ownerId])
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?  // opaque User.id from auth-service, set when the member is a registered account
+  name      String   // denormalized display name — works even for members without a User account
+  email     String?  // denormalized — used for notification emails without calling auth-service
+  role      String   @default("MEMBER") // ProjectRole
+  createdAt DateTime @default(now())
+
+  tasks Task[] @relation("TaskOwner")
+
+  @@unique([projectId, email])
+  @@index([projectId])
+  @@index([userId])
+}
+
+model Conversation {
+  id         String   @id @default(uuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  source     String   @default("PASTE") // WHATSAPP | DISCORD | SLACK | TEAMS | NOTES | PASTE | UPLOAD
+  rawText    String
+  fileName   String?
+  createdAt  DateTime @default(now())
+
+  analyses AIAnalysis[]
+
+  @@index([projectId])
+}
+
+model AIAnalysis {
+  id             String   @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  projectId      String
+  rawResponse    String   // full validated JSON from Gemini (or mock), stored as text
+  status         String   @default("PENDING") // PENDING | CONFIRMED | DISCARDED
+  isMock         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  confirmedAt    DateTime?
+
+  @@index([conversationId])
+  @@index([projectId])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  ownerId     String?
+  owner       ProjectMember? @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  status      String   @default("TODO") // TaskStatus
+  priority    String   @default("MEDIUM") // TaskPriority
+  deadline    DateTime?
+  confidence  Float?   // AI extraction confidence, null if manually created
+  source      String   @default("MANUAL") // MANUAL | AI
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  dependsOn    TaskDependency[] @relation("DependentTask")
+  dependedOnBy TaskDependency[] @relation("BlockingTask")
+
+  @@index([projectId])
+  @@index([ownerId])
+  @@index([status])
+}
+
+model TaskDependency {
+  id              String @id @default(uuid())
+  taskId          String
+  task            Task   @relation("DependentTask", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTaskId String
+  dependsOnTask   Task   @relation("BlockingTask", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnTaskId])
+  @@index([taskId])
+  @@index([dependsOnTaskId])
+}
+
+model Decision {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  summary     String
+  context     String?
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model Milestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId])
+}
+
+model AIInsight {
+  id                 String   @id @default(uuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type               String   // InsightType
+  severity           String   // InsightSeverity
+  title              String
+  explanation        String
+  recommendedAction  String?
+  createdAt          DateTime @default(now())
+
+  @@index([projectId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   // opaque User.id from auth-service — not a Prisma relation
+  type      String   // NotificationType
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  projectId String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String?  // opaque User.id from auth-service — not a Prisma relation
+  userName  String?  // denormalized at write-time (from the JWT), since this service can't join to Users
+  action    String
+  metadata  String?  // JSON string
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}

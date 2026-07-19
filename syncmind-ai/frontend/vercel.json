@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/auth/:match*",
+      "destination": "https://syncmind-auth.onrender.com/:match*"
+    },
+    {
+      "source": "/api/:match*",
+      "destination": "https://syncmind-project.onrender.com/:match*"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

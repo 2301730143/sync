@@ -1,0 +1,31 @@
+// auth-service — owns the User table exclusively. project-service never
+// reads this database directly; it only trusts the JWTs this service issues
+// (shared JWT_SECRET) and keeps its own denormalized copy of name/email on
+// ProjectMember records. This is the actual service boundary, not just a
+// folder split.
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["auth_service"]
+}
+
+model User {
+  id                        String   @id @default(uuid())
+  email                     String   @unique
+  passwordHash              String
+  name                      String
+  avatarColor               String   @default("#6366f1")
+  emailNotificationsEnabled Boolean  @default(true)
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  @@index([email])
+  @@schema("auth_service")
+}

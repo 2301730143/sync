@@ -1,0 +1,47 @@
+services:
+  # Microservice 1: Auth Service (Port 5001)
+  - type: web
+    name: syncmind-auth-service
+    runtime: node
+    rootDir: backend/auth-service
+    buildCommand: npm install && npx prisma generate && npx prisma db push
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./prod-auth.db
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: CLIENT_URL
+        value: https://syncmind-ai.vercel.app
+
+  # Microservice 2: Project & AI Service (Port 5002)
+  - type: web
+    name: syncmind-project-service
+    runtime: node
+    rootDir: backend/project-service
+    buildCommand: npm install && npx prisma generate && npx prisma db push
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 5002
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:./prod-project.db
+      - key: JWT_SECRET
+        fromService:
+          name: syncmind-auth-service
+          type: web
+          envVarKey: JWT_SECRET
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: CLIENT_URL
+        value: https://syncmind-ai.vercel.app
